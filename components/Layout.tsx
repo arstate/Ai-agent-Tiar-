@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { ViewState } from '../types';
-import { Database, MessageSquare, BrainCircuit, Settings } from 'lucide-react';
+import { Database, MessageSquare, BrainCircuit, Settings as SettingsIcon } from 'lucide-react';
 
 interface LayoutProps {
   currentView: ViewState;
@@ -11,7 +12,6 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
   return (
     <div className="flex h-screen bg-gray-900 text-white overflow-hidden font-sans">
-      {/* Sidebar */}
       <aside className="w-20 md:w-64 flex-shrink-0 bg-gray-950 border-r border-gray-800 flex flex-col transition-all duration-300">
         <div className="h-16 flex items-center justify-center md:justify-start md:px-6 border-b border-gray-800">
           <BrainCircuit className="w-8 h-8 text-primary-500 mr-0 md:mr-3" />
@@ -23,19 +23,19 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
         <nav className="flex-1 py-6 space-y-2 px-2 md:px-4">
           <button
             onClick={() => setView('knowledge')}
-            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group ${
+            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 ${
               currentView === 'knowledge'
                 ? 'bg-primary-600/20 text-primary-400 border border-primary-600/30'
                 : 'hover:bg-gray-800 text-gray-400 hover:text-white'
             }`}
           >
             <Database className="w-6 h-6 flex-shrink-0" />
-            <span className="hidden md:block ml-3 font-medium">Knowledge Base</span>
+            <span className="hidden md:block ml-3 font-medium">Knowledge</span>
           </button>
 
           <button
             onClick={() => setView('chat')}
-            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group ${
+            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 ${
               currentView === 'chat'
                 ? 'bg-primary-600/20 text-primary-400 border border-primary-600/30'
                 : 'hover:bg-gray-800 text-gray-400 hover:text-white'
@@ -44,23 +44,29 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
             <MessageSquare className="w-6 h-6 flex-shrink-0" />
             <span className="hidden md:block ml-3 font-medium">WhatsApp Agent</span>
           </button>
+
+          <button
+            onClick={() => setView('settings')}
+            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 ${
+              currentView === 'settings'
+                ? 'bg-primary-600/20 text-primary-400 border border-primary-600/30'
+                : 'hover:bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            <SettingsIcon className="w-6 h-6 flex-shrink-0" />
+            <span className="hidden md:block ml-3 font-medium">Settings</span>
+          </button>
         </nav>
 
         <div className="p-4 border-t border-gray-800">
           <div className="text-xs text-gray-500 text-center md:text-left">
-            <span className="hidden md:inline">Powered by Gemini 2.5 & 3.0</span>
+            <span className="hidden md:inline">Gemini 2.5 Flash + Rotation</span>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Header mobile only */}
-        <header className="md:hidden h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4">
-           <span className="font-bold text-lg">Nexus Agent</span>
-        </header>
-        
-        <div className="flex-1 overflow-auto bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-opacity-20">
+        <div className="flex-1 overflow-auto bg-gray-900">
           {children}
         </div>
       </main>

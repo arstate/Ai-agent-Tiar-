@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import Layout from './components/Layout';
 import KnowledgeBase from './components/KnowledgeBase';
 import WhatsAppAgent from './components/WhatsAppAgent';
+import Settings from './components/Settings';
 import { StoreProvider } from './contexts/StoreContext';
 import { ViewState } from './types';
 
@@ -13,6 +15,7 @@ const App: React.FC = () => {
       <Layout currentView={currentView} setView={setCurrentView}>
         {currentView === 'knowledge' && <KnowledgeBase />}
         {currentView === 'chat' && <WhatsAppAgent />}
+        {currentView === 'settings' && <Settings />}
       </Layout>
     </StoreProvider>
   );

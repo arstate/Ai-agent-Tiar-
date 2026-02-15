@@ -1,3 +1,4 @@
+
 export interface MemoryItem {
   id: string;
   type: 'text' | 'image' | 'pdf';
@@ -13,6 +14,13 @@ export interface AgentSettings {
   language: string;
 }
 
+export interface ApiKeyEntry {
+  id: string;
+  key: string;
+  label: string;
+  createdAt: number;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -24,4 +32,4 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export type ViewState = 'knowledge' | 'chat';
+export type ViewState = 'knowledge' | 'chat' | 'settings';

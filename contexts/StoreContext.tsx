@@ -1,7 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { MemoryItem, AgentSettings } from '../types';
+import { MemoryItem, AgentSettings, ApiKeyEntry } from '../types';
 import { db } from '../services/firebase';
-import { ref, onValue, set, remove, update } from 'firebase/database';
+import { ref, onValue, set, remove, update, push } from 'firebase/database';
 import { Loader2 } from 'lucide-react';
 
 interface StoreContextType {
@@ -10,6 +11,9 @@ interface StoreContextType {
   removeMemory: (id: string) => Promise<void>;
   settings: AgentSettings;
   updateSettings: (newSettings: Partial<AgentSettings>) => Promise<void>;
+  apiKeys: ApiKeyEntry[];
+  addApiKey: (label: string, key: string) => Promise<void>;
+  removeApiKey: (id: string) => Promise<void>;
   loading: boolean;
 }
 
@@ -24,56 +28,51 @@ const DEFAULT_SETTINGS: AgentSettings = {
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [settings, setSettings] = useState<AgentSettings>(DEFAULT_SETTINGS);
+  const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>([]);
   
-  // Loading states
   const [memoriesLoaded, setMemoriesLoaded] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [keysLoaded, setKeysLoaded] = useState(false);
 
-  // Sync Memories from Firebase
   useEffect(() => {
     const memoriesRef = ref(db, 'memories');
-    const unsubscribe = onValue(memoriesRef, (snapshot) => {
+    return onValue(memoriesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const loadedMemories = Object.values(data) as MemoryItem[];
-        // Sort by timestamp desc (newest first)
-        loadedMemories.sort((a, b) => b.timestamp - a.timestamp);
-        setMemories(loadedMemories);
-      } else {
-        setMemories([]);
-      }
+        const loaded = Object.values(data) as MemoryItem[];
+        loaded.sort((a, b) => b.timestamp - a.timestamp);
+        setMemories(loaded);
+      } else setMemories([]);
       setMemoriesLoaded(true);
-    }, (error) => {
-      console.error("Firebase Read Error (Memories):", error);
-      setMemoriesLoaded(true); // Allow app to load even on error (as empty)
     });
-
-    return () => unsubscribe();
   }, []);
 
-  // Sync Settings from Firebase
   useEffect(() => {
     const settingsRef = ref(db, 'settings');
-    const unsubscribe = onValue(settingsRef, (snapshot) => {
+    return onValue(settingsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) setSettings(data);
+      else set(settingsRef, DEFAULT_SETTINGS);
+      setSettingsLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const keysRef = ref(db, 'api_keys');
+    return onValue(keysRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        setSettings(data);
-      } else {
-        // If settings don't exist in DB, initialize them
-        set(settingsRef, DEFAULT_SETTINGS);
-        setSettings(DEFAULT_SETTINGS);
-      }
-      setSettingsLoaded(true);
-    }, (error) => {
-       console.error("Firebase Read Error (Settings):", error);
-       setSettingsLoaded(true);
+        const loaded = Object.entries(data).map(([id, val]: [string, any]) => ({
+          id,
+          ...val
+        })) as ApiKeyEntry[];
+        setApiKeys(loaded);
+      } else setApiKeys([]);
+      setKeysLoaded(true);
     });
-
-    return () => unsubscribe();
   }, []);
 
   const addMemory = async (memory: MemoryItem) => {
-    // Use the memory ID as the key in Firebase
     await set(ref(db, `memories/${memory.id}`), memory);
   };
 
@@ -82,11 +81,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateSettings = async (newSettings: Partial<AgentSettings>) => {
-    // We optimistically update state, but Firebase listener will confirm it
     await update(ref(db, 'settings'), newSettings);
   };
 
-  const loading = !memoriesLoaded || !settingsLoaded;
+  const addApiKey = async (label: string, key: string) => {
+    const keysRef = ref(db, 'api_keys');
+    await push(keysRef, {
+      label,
+      key,
+      createdAt: Date.now()
+    });
+  };
+
+  const removeApiKey = async (id: string) => {
+    await remove(ref(db, `api_keys/${id}`));
+  };
+
+  const loading = !memoriesLoaded || !settingsLoaded || !keysLoaded;
 
   if (loading) {
     return (
@@ -94,14 +105,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
         <div className="text-center">
           <p className="text-xl font-bold">Nexus Agent</p>
-          <p className="text-sm text-gray-400">Syncing with Realtime Database...</p>
+          <p className="text-sm text-gray-400">Loading Intelligence Core...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <StoreContext.Provider value={{ memories, addMemory, removeMemory, settings, updateSettings, loading }}>
+    <StoreContext.Provider value={{ 
+      memories, addMemory, removeMemory, 
+      settings, updateSettings, 
+      apiKeys, addApiKey, removeApiKey,
+      loading 
+    }}>
       {children}
     </StoreContext.Provider>
   );
@@ -109,8 +125,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 export const useStore = () => {
   const context = useContext(StoreContext);
-  if (!context) {
-    throw new Error("useStore must be used within a StoreProvider");
-  }
+  if (!context) throw new Error("useStore must be used within a StoreProvider");
   return context;
 };
