@@ -12,18 +12,25 @@
           extend: {
             colors: {
               gray: {
-                900: '#111827',
-                800: '#1f2937',
-                700: '#374151',
-                600: '#4b5563',
+                900: '#0f172a',
+                800: '#1e293b',
+                700: '#334155',
+                600: '#475569',
               },
               primary: {
-                500: '#3b82f6',
-                600: '#2563eb',
+                500: '#6366f1',
+                600: '#4f46e5',
               }
             },
             animation: {
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'glow': 'glow 2s ease-in-out infinite alternate',
+            },
+            keyframes: {
+              glow: {
+                'from': { 'box-shadow': '0 0 5px #6366f1, 0 0 10px #6366f1' },
+                'to': { 'box-shadow': '0 0 20px #6366f1, 0 0 30px #4f46e5' }
+              }
             }
           },
         },
@@ -40,29 +47,32 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: #0f172a;
       }
       ::-webkit-scrollbar-thumb {
-        background: #475569;
+        background: #334155;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
+        background: #475569;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
     "uuid": "https://esm.sh/uuid@9.0.1",
-    "@google/genai": "https://esm.sh/@google/genai@0.22.0",
+    "@google/genai": "https://esm.sh/@google/genai@0.21.0",
     "react": "https://esm.sh/react@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "lucide-react": "https://esm.sh/lucide-react@0.263.1",
     "firebase/app": "https://esm.sh/firebase@10.8.1/app",
     "firebase/database": "https://esm.sh/firebase@10.8.1/database",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+    "react/": "https://esm.sh/react@^18.2.0/",
+    "firebase/": "https://esm.sh/firebase@^10.8.1/",
+    "react-dom/": "https://esm.sh/react-dom@^18.2.0/"
   }
 }
 </script>

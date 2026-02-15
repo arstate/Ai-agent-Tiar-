@@ -2,27 +2,26 @@
 import { GoogleGenAI } from "@google/genai";
 import { MemoryItem, AgentSettings, ApiKeyEntry } from "../types";
 
-const MODEL_ID = 'gemini-2.5-flash-native-audio-preview-12-2025';
+const MODEL_ID = 'gemini-3-flash-preview';
 
 /**
  * Helper to execute a Gemini call with key rotation logic.
- * Tries keys one by one if a 429 (Rate Limit) is encountered.
  */
 async function callGeminiWithRotation(
   keys: ApiKeyEntry[],
   task: (ai: GoogleGenAI) => Promise<any>
 ): Promise<any> {
-  if (!keys || keys.length === 0) {
-    // Fallback to process.env.API_KEY if no keys in DB
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-    return await task(ai);
-  }
+  // Use the provided keys if available, otherwise fallback to process.env.API_KEY
+  const availableKeys = (keys && keys.length > 0) 
+    ? keys 
+    : [{ id: 'env', key: process.env.API_KEY || '', label: 'Environment Key', createdAt: Date.now() }];
 
   // Shuffle keys to distribute load
-  const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
+  const shuffledKeys = [...availableKeys].sort(() => Math.random() - 0.5);
   let lastError: any = null;
 
   for (const keyEntry of shuffledKeys) {
+    if (!keyEntry.key) continue;
     try {
       const ai = new GoogleGenAI({ apiKey: keyEntry.key });
       return await task(ai);
@@ -30,21 +29,21 @@ async function callGeminiWithRotation(
       lastError = error;
       const status = error?.status || error?.error?.code || 0;
       
-      // If it's a rate limit error (429), try the next key
       if (status === 429 || error?.message?.includes("429")) {
         console.warn(`Key ${keyEntry.label} rate limited. Rotating...`);
         continue;
       }
       
-      // If it's another error (like invalid key), we might want to rotate too or just throw
-      console.error(`Error with key ${keyEntry.label}:`, error);
-      if (status === 401 || status === 403) continue;
+      if (status === 401 || status === 403) {
+        console.error(`Invalid key: ${keyEntry.label}`);
+        continue;
+      }
 
       throw error;
     }
   }
 
-  throw lastError || new Error("All API keys failed or were rate limited.");
+  throw lastError || new Error("All API keys failed. Please check your settings.");
 }
 
 /**
@@ -60,7 +59,7 @@ export const analyzeContent = async (
     let contents: any = {};
 
     if (type === 'text') {
-      contents = { parts: [{ text: `Analyze, interpret, and summarize this text comprehensively for a knowledge base:\n\n${content}` }] };
+      contents = { parts: [{ text: `Act as a Knowledge Architect. Analyze this text to extract core facts, rules, and logic for an AI agent's brain:\n\n${content}` }] };
     } else {
       contents = {
         parts: [
@@ -71,7 +70,7 @@ export const analyzeContent = async (
             }
           },
           {
-            text: "Analyze this document/image. Extract text and key details to build a usable knowledge base entry for an AI agent."
+            text: "Deeply analyze this document/image. Extract text, identified entities, patterns, and critical facts. Summarize it in a way that an AI agent can perfectly reference it later to answer customer questions."
           }
         ]
       };
@@ -82,12 +81,12 @@ export const analyzeContent = async (
       contents: contents,
     });
 
-    return response.text || "No analysis generated.";
+    return response.text || "No insights could be extracted.";
   });
 };
 
 /**
- * Generates a WhatsApp response based on Agent Role, Memories, and Client Input.
+ * Generates an Agent response based on Settings, Memories, and Input.
  */
 export const generateAgentResponse = async (
   clientInput: string,
@@ -97,25 +96,27 @@ export const generateAgentResponse = async (
   apiKeys: ApiKeyEntry[]
 ): Promise<string> => {
   return await callGeminiWithRotation(apiKeys, async (ai) => {
-    const knowledgeBase = memories.map(m => `[Memory: ${m.name}]\n${m.summary}`).join("\n\n");
+    const knowledgeBase = memories.length > 0 
+      ? memories.map(m => `[SOURCE: ${m.name}]\n${m.summary}`).join("\n\n---\n\n")
+      : "No specific knowledge loaded. Use general intelligence.";
 
-    const systemPrompt = `
-      You are an expert AI Agent:
-      Role: ${settings.role}
-      Tone: ${settings.tone}
-      Language: ${settings.language}
+    const systemInstruction = `
+      You are an intelligent AI Agent.
+      ROLE: ${settings.role}
+      TONE: ${settings.tone}
+      LANGUAGE: ${settings.language}
 
-      GOAL: Draft a perfect WhatsApp reply using ONLY the Knowledge Base below.
-      
       KNOWLEDGE BASE:
       ${knowledgeBase}
 
       INSTRUCTIONS:
-      - Concise, friendly, use emojis.
-      - If unknown, ask for clarification.
+      1. Use the provided KNOWLEDGE BASE as your primary source of truth.
+      2. Keep responses natural, human-like, and professional.
+      3. Use emojis where appropriate to maintain a friendly WhatsApp-like feel.
+      4. If the answer isn't in the knowledge base, state that you don't know yet but can help with related topics.
     `;
 
-    const parts: any[] = [{ text: systemPrompt }];
+    const parts: any[] = [];
 
     if (clientImageBase64) {
       parts.push({
@@ -124,16 +125,19 @@ export const generateAgentResponse = async (
           data: clientImageBase64
         }
       });
-      parts.push({ text: `Analyze the client's image and caption: "${clientInput}" and reply accordingly.` });
+      parts.push({ text: `Analyze the image provided by the user and respond to: "${clientInput || 'What is in this image?'}"` });
     } else {
-      parts.push({ text: `Client Message: "${clientInput}"` });
+      parts.push({ text: clientInput });
     }
 
     const response = await ai.models.generateContent({
       model: MODEL_ID,
       contents: { parts },
+      config: {
+        systemInstruction
+      }
     });
 
-    return response.text || "I couldn't generate a response.";
+    return response.text || "I'm sorry, I couldn't process that request.";
   });
 };
