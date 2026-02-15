@@ -1,0 +1,5 @@
+{
+  "name": "Nexus Agent",
+  "description": "An intelligent AI agent that learns from your documents and images to assist with specific communication tasks like responding to WhatsApp clients.",
+  "requestFramePermissions": []
+}
