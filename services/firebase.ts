@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
@@ -11,9 +12,9 @@ const firebaseConfig = {
   appId: "1:858916252507:web:75f78903c1c7cc169f887e"
 };
 
-// Initialize Firebase
-// Using getApps() prevents re-initialization errors in development environments
+// Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Realtime Database
+// Initialize and export Realtime Database
+// Explicitly passing the app instance helps resolve "Service database is not available"
 export const db = getDatabase(app);
